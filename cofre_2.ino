@@ -57,8 +57,8 @@ void loop()
     break;
   case 's1':
     for ( int i=1; i<6; i++){
-      if ((i != senha[1] ) && ( digitalRead(i) == HIGH)){
-        currentState = "SE";
+      if ((i != senha[1] && ( digitalRead(i) == HIGH)){
+        currentState = "SR";
         digitalWrite(LED_B, HIGH);
       }
       else if (digitalRead(i) == HIGH){
