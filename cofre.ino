@@ -3,8 +3,8 @@
 #include <Cofre.h>
 
 #define N 11    //Numero maximo de digitos da senha
-#define temp 3000     //Tempo de cancelamento
-#define sinal_abre 43    //Angulacao do servo para destravar a porta e
+#define temp 4000     //Tempo de cancelamento
+#define sinal_abre 45    //Angulacao do servo para destravar a porta e
 #define sinal_fecha 125    //para travar a porta
 #define trans 700      //Tempo de transicao, com finalidade de evitar multiplas entradas sucessivas indesejadas;
 
@@ -76,7 +76,7 @@ void loop()
     cont = 0;
     igual = true;
 
-    if(senha[0] != senha_m[0]) igual = false;
+    if(senha[0] != senha_m[0]) igual = false;  //Acho que aqui é desnecessário essa verificação.
 
     if((chave_ativada == senha[0]) && (igual == false)){     //Recebeu a senha do usuario
       Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
@@ -1264,6 +1264,7 @@ void loop()
       Cofre.acende_led(LED_B);
       currentState = fechado_destrancado;
       delay(trans);
+      servo.write(sinal_abre);
       break;
     }
     else{         //Redirecionamento para o estado 'senha_errada'
@@ -1293,7 +1294,7 @@ void loop()
       Cofre.acende_led(LED_B);
       currentState = estado_inicial;
       delay(trans);
-      ti = millis();
+      servo.write(sinal_fecha); 
       break;
     }
     else{   
