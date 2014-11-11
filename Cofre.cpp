@@ -48,14 +48,14 @@ void Cofre::acende_led(int cor)    //Funcao que acende o LED com a cor indicada 
   }
 }
 
-void Cofre::apaga_led()
+void Cofre::apaga_led() //Apaga todos os LEDs
 {
   digitalWrite(_LED_R, LOW);
   digitalWrite(_LED_G, LOW);
   digitalWrite(_LED_B, LOW);
 }
 
-int Cofre::senha_errada(int estado)
+int Cofre::senha_errada(int estado)   //Estado 'senha_errada' da maquina de estados
 {
   unsigned long ti = millis();
   while (millis() - ti < _temp){
@@ -70,7 +70,7 @@ int Cofre::senha_errada(int estado)
   else return 50;
 }
 
-int Cofre::leia_chave()
+int Cofre::leia_chave()     //Le uma chave ativada, ou retorna 0
 {
   if(digitalRead(_chave_A) == HIGH) return _chave_A;
   else{
