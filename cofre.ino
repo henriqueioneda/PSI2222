@@ -110,7 +110,7 @@ void loop()
     break;
     
   case fechado_destrancado:     //Estado estacionario; aguarda o trancamento atraves da insercao da senha do usuario ou a abertura da porta
-    cont = 0;
+    cont = -1;
     igual = true;
     Cofre.acende_led(LED_G);        //O LED verde fica aceso durante o tempo em que o cofre esta aberto
     if (digitalRead(porta) == LOW){         //Transicao para o estado aberto_destrancado caso a porta seja aberta
