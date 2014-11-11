@@ -19,8 +19,8 @@ int chave_D = 4;
 int chave_E = 5;
 int porta = 10;
 int chave_ativada = 0;
-bool igual = true;
-int cont = 0;
+
+int cont = -1;	//Variavel auxiliar para ajudar na diferenciacao da senha do usuario com a senha mestra; detalhamento no relatorio
 
 Cofre Cofre(chave_A, chave_B, chave_C, chave_D, chave_E, LED_R, LED_G, LED_B, temp);
 Servo servo;
@@ -65,6 +65,14 @@ void setup()
   }
 }
 
+//###########################################################################################################################################################
+//		OBSERVACAO: A implementacao da maquina de estados ilustrada pelo diagrama do relatorio sera feita de uma forma diferente, tendo em 				   //
+//			  		vista tornar a escrita mais pratica, o codigo mais limpo, conciso e claro. Sabemos que esse programa nao segue						   //
+//			 		conservativamente a definicao teorica de uma maquina de estado; mas sim, tudo foi baseado nela. As escolhas como: variaveis 	   	   //
+//			 		internas, estados movidos para a biblioteca e funcoes extras ajudam nessa tarefa e as nomenclaturas escolhidas					   	   //
+//			 		foram visando o maximo entendimento do codigo. Na essencia, a maquina de estados esta implementada.								   	   //
+//###########################################################################################################################################################
+
 void loop()
 {
   
@@ -72,18 +80,17 @@ void loop()
   
   case estado_inicial:     //Estado estacionario; aguarda a entrada de uma das senhas
     Cofre.acende_led(LED_R);     //O LED vermelho fica aceso durante o tempo em que o cofre fica trancado
-    chave_ativada = Cofre.leia_chave();
-    cont = 0;
-    igual = true;
+    chave_ativada = Cofre.leia_chave();			//Funcao criada na biblioteca customizada, a fim de ler se alguma chave foi ativada;
+   												//caso contrario, retorna 0 (vide arquivo da biblioteca)
+    cont = -1;		//Inicia-se cont com -1	
 
-    if(senha[0] != senha_m[0]) igual = false;  //Acho que aqui é desnecessário essa verificação.
+    if(senha[0] != senha_m[0]) cont = 0;      //Armazenamento do estado em que a senha comecou a diferir da senha mestra
 
-    if((chave_ativada == senha[0]) && (igual == false)){     //Recebeu a senha do usuario
+    if((chave_ativada == senha[0]) && (cont == 0)){     //Recebeu a senha do usuario, verifica se a senha comeca a diferir agora
       Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
       currentState = a1;        //Direcionamento para o proximo estado de senha do usuario
       delay(trans);
       ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
     }
     else{
       if(chave_ativada == senha_m[0]){     //Analogamente, o processo ocorre para o caso da senha mestra
@@ -91,14 +98,13 @@ void loop()
         currentState = m1;    //Proximo estado da senha mestra
         delay(trans);
         ti = millis();
-        break;
       }
       else{
-        if (chave_ativada > 0){
+        if (chave_ativada > 0){		//Se nao e nem o digito da senha do usuario, nem da mestra, encaminhando para 'senha_errada'
           Cofre.acende_led(LED_B);
           delay(trans);
-          currentState = Cofre.senha_errada(currentState);
-        }
+          currentState = Cofre.senha_errada(currentState);		//O estado senha errada foi movido para a biblioteca por conveniencia,
+        }														//Simplificando o uso e podendo ser usado como um 'estado multiplo'
       }
     }
     break;
@@ -117,7 +123,6 @@ void loop()
       currentState = f1;    //Redirecionamento para o proximo estado de trancamento
       delay(trans);
       ti = millis();
-      break;
     }
     else{
       if (chave_ativada > 0){
@@ -147,7 +152,7 @@ void loop()
  
  //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    ESTADOS INICIAIS    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//    
   case a1:  
-    Cofre.acende_led(LED_R);
+    Cofre.acende_led(LED_R);	 //Mantem o LED vermelho aceso
     if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
       currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
       break;
@@ -165,7 +170,6 @@ void loop()
       currentState = a2;
       delay(trans);
       ti = millis();
-      break;
     }
     else{         //Redirecionamento para o estado 'senha_errada'
       if (chave_ativada > 0){
@@ -177,7 +181,7 @@ void loop()
     break;
     
   case f1:  
-    Cofre.acende_led(LED_G);
+    Cofre.acende_led(LED_G);	 //Mantem o LED verde aceso
     if (millis()-ti > temp){     //Caso o tempo de execucao do estado seja maior que 'temp', o usuario sera redirecionado para o inicio do processo de trancamento
       currentState = fechado_destrancado;
       break;
@@ -195,7 +199,6 @@ void loop()
       currentState = f2;
       delay(trans);
       ti = millis();
-      break;
     }
     else{         //Redirecionamento para o estado 'senha_errada'
       if (chave_ativada > 0){
@@ -206,35 +209,32 @@ void loop()
     }    
     break;
      
-  case m1:                 //Processo analogo aos (a1,...,aX), apenas com o processo de comparacao com o vetor senha_m
-    Cofre.acende_led(LED_R);     //OBS: Como a senha mestra tem sempre o numero maximo de digitos, nao e necessario verificar o fim dela
+  case m1:                 //Processo analogo aos (a1,...,aX); Para simplificar a maquina de estados, foi criado o parametro cont
+    Cofre.acende_led(LED_R); 	//Mantem o LED vermelho aceso    
     if (millis()-ti > temp){   
       currentState = estado_inicial;
       break;
     }
-
+    									//OBS: Como a senha mestra tem sempre o numero maximo de digitos, nao e necessario verificar o fim dela
     chave_ativada = Cofre.leia_chave();
 
-    if(senha[1] != senha_m[1]){
-      if(cont == 0) cont = 1;
-      if((senha[1] == 255)&&igual) currentState = a1;
-      igual = false;
+    if(senha[1] != senha_m[1]){			//O programa segue o caminho (m1,...,mX) no caso da senha do usuario estar contida na senha mestra,
+      if(cont == -1) cont = 1;			//mas no momento que elas diferirem, há um transicionamento para a linha do a1;
+      if(senha[1] == 255) currentState = a1;			//Isso é feito apenas para simplificar a implementacao
     }
 
-    if((chave_ativada == senha[1]) && (igual == false) && (cont == 1)){     //Recebeu a senha do usuario
+    if((chave_ativada == senha[1]) && (cont == 1)){     //Recebeu a entrada do usuario
       Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a2;        //Direcionamento para o proximo estado de senha do usuario
+      currentState = a2;        //Direcionamento para o proximo estado de senha do usuario caso diferir da senha mestra
       delay(trans);
       ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
     }
     else{
-      if(chave_ativada == senha_m[1]){      //Continuacao do processo de abertura do cofre
+      if(chave_ativada == senha_m[1]){      //Caso a senha ainda esteja contida na senha mestra
         Cofre.acende_led(LED_B);
-        currentState = m2;
+        currentState = m2;					//Continuacao no caminho da senha mestra
         delay(trans);
         ti = millis();
-        break;
       }
       else{         //Redirecionamento para o estado 'senha_errada'
         if (chave_ativada > 0){
@@ -247,7 +247,7 @@ void loop()
     break;
   
   case t1:  
-    Cofre.apaga_led();
+    Cofre.apaga_led();		//Mantem o LED apagado
     if ( (millis()-ti > temp) || (digitalRead(porta) == HIGH) ){    //Caso o tempo de execucao ultrapasse 'temp' ou a porta seja fechada, considera-se que
       currentState = aberto_destrancado;                            //o usuario terminou de mudar sua senha
       EEPROM.write(1,255);
@@ -269,7 +269,7 @@ void loop()
  
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    ESTADOS DO MEIO    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//
 
-                                                  //Processos analogos aos dos estados (a1, f1, t1 e m1), com funcao de continuidade
+                                             //Processos analogos aos dos estados (a1, f1, t1 e m1), com funcao de continuidade ate os estados finais
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//                                                  
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//
@@ -277,7 +277,7 @@ void loop()
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//
   case a2:  
-    Cofre.acende_led(LED_R);
+    Cofre.acende_led(LED_R);	//Mantem o LED vermelho aceso
     if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
       currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
       break;
@@ -295,7 +295,6 @@ void loop()
       currentState = a3;
       delay(trans);
       ti = millis();
-      break;
     }
     else{         //Redirecionamento para o estado 'senha_errada'
       if (chave_ativada > 0){
@@ -308,26 +307,25 @@ void loop()
 
   case a3:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){     
+      currentState = estado_inicial;   
       break;
     }
-    if (senha[3] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[3] == 255){      
+      currentState = fechado_destrancado;     
+      servo.write(sinal_abre);       
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[3]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[3]){   
       Cofre.acende_led(LED_B);
       currentState = a4;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{        
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -338,26 +336,25 @@ void loop()
 
   case a4:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){    
+      currentState = estado_inicial;   
       break;
     }
-    if (senha[4] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[4] == 255){     
+      currentState = fechado_destrancado;    
+      servo.write(sinal_abre);        
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[4]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[4]){   
       Cofre.acende_led(LED_B);
       currentState = a5;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{       
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -368,26 +365,25 @@ void loop()
 
   case a5:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){     
+      currentState = estado_inicial;  
       break;
     }
-    if (senha[5] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[5] == 255){       
+      currentState = fechado_destrancado;
+      servo.write(sinal_abre);        
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[5]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[5]){     
       Cofre.acende_led(LED_B);
       currentState = a6;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{        
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -398,26 +394,25 @@ void loop()
 
   case a6:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){    
+      currentState = estado_inicial;   
       break;
     }
-    if (senha[6] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[6] == 255){      
+      currentState = fechado_destrancado;       
+      servo.write(sinal_abre);  
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[6]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[6]){   
       Cofre.acende_led(LED_B);
       currentState = a7;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{        
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -428,26 +423,25 @@ void loop()
 
   case a7:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){    
+      currentState = estado_inicial; 
       break;
     }
-    if (senha[7] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[7] == 255){     
+      currentState = fechado_destrancado;     
+      servo.write(sinal_abre);   
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[7]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[7]){    
       Cofre.acende_led(LED_B);
       currentState = a8;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{     
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -458,26 +452,25 @@ void loop()
 
   case a8:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){     
+      currentState = estado_inicial; 
       break;
     }
-    if (senha[8] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[8] == 255){      
+      currentState = fechado_destrancado;     
+      servo.write(sinal_abre);   
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[8]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[8]){   
       Cofre.acende_led(LED_B);
       currentState = a9;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{     
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -488,26 +481,25 @@ void loop()
 
   case a9:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){    
+      currentState = estado_inicial; 
       break;
     }
-    if (senha[9] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[9] == 255){       
+      currentState = fechado_destrancado;   
+      servo.write(sinal_abre);      
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[9]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[9]){  
       Cofre.acende_led(LED_B);
       currentState = aX;
       delay(trans);
       ti = millis();
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{       
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -531,28 +523,25 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[2] != senha_m[2]){
-      if(cont == 0) cont = 2;
-      if((senha[2] == 255)&& igual) currentState = a2;
-      igual = false;
+      if(cont == -1) cont = 2;
+      if(senha[2] == 255) currentState = a2;
     }
 
-    if((chave_ativada == senha[2]) && (igual == false) && (cont == 2)){     //Recebeu a senha do usuario
+    if((chave_ativada == senha[2]) && (cont == 2)){     //Recebeu a senha do usuario, caso seja diferente da senha mestra
       Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
       currentState = a3;        //Direcionamento para o proximo estado de senha do usuario
       delay(trans);
       ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
     }
     else{
-      if(chave_ativada == senha_m[2]){      
+      if(chave_ativada == senha_m[2]){      //Caso seja igual a senha mestra
         Cofre.acende_led(LED_B);
         currentState = m3;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
-        if (chave_ativada > 0){
+        if (chave_ativada > 0){		//Caso senha errada
           Cofre.acende_led(LED_B);
           delay(trans);
           currentState = Cofre.senha_errada(currentState);
@@ -571,17 +560,15 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[3] != senha_m[3]){
-      if(cont == 0) cont = 3;
-      if((senha[3] == 255)&& igual) currentState = a3;
-      igual = false;
+      if(cont == -1) cont = 3;
+      if(senha[3] == 255) currentState = a3;
     }
 
-    if((chave_ativada == senha[3]) && (igual == false) && (cont == 3)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a4;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[3]) && (cont == 3)){    
+      Cofre.acende_led(LED_B);      
+      currentState = a4;     
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis();   
     }
     else{
       if(chave_ativada == senha_m[3]){      
@@ -589,7 +576,6 @@ void loop()
         currentState = m4;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -611,17 +597,15 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[4] != senha_m[4]){
-      if(cont == 0) cont = 4;
-      if((senha[4] == 255)&& igual) currentState = a4;
-      igual = false;
+      if(cont == -1) cont = 4;
+      if(senha[4] == 255) currentState = a4;
     }
 
-    if((chave_ativada == senha[4]) && (igual == false) && (cont == 4)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a5;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[4]) && (cont == 4)){    
+      Cofre.acende_led(LED_B);     
+      currentState = a5;    
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis();    
     }
     else{
       if(chave_ativada == senha_m[4]){      
@@ -629,7 +613,6 @@ void loop()
         currentState = m5;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -651,17 +634,15 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[5] != senha_m[5]){
-      if(cont == 0) cont = 5;
-      if((senha[5] == 255)&& igual) currentState = a5;
-      igual = false;
+      if(cont == -1) cont = 5;
+      if(senha[5] == 255) currentState = a5;
     }
 
-    if((chave_ativada == senha[5]) && (igual == false) && (cont == 5)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a6;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[5]) && (cont == 5)){    
+      Cofre.acende_led(LED_B);   
+      currentState = a6;       
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis();  
     }
     else{
       if(chave_ativada == senha_m[5]){      
@@ -669,7 +650,6 @@ void loop()
         currentState = m6;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -691,17 +671,15 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[6] != senha_m[6]){
-      if(cont == 0) cont = 6;
-      if((senha[6] == 255)&& igual) currentState = a6;
-      igual = false;
+      if(cont == -1) cont = 6;
+      if(senha[6] == 255) currentState = a6;
     }
 
-    if((chave_ativada == senha[6]) && (igual == false) && (cont == 6)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a7;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[6]) && (cont == 6)){    
+      Cofre.acende_led(LED_B);    
+      currentState = a7;     
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis();    
     }
     else{
       if(chave_ativada == senha_m[6]){      
@@ -709,7 +687,6 @@ void loop()
         currentState = m7;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -731,17 +708,15 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[7] != senha_m[7]){
-      if(cont == 0) cont = 7;
-      if((senha[7] == 255)&& igual) currentState = a7;
-      igual = false;
+      if(cont == -1) cont = 7;
+      if(senha[7] == 255) currentState = a7;
     }
 
-    if((chave_ativada == senha[7]) && (igual == false) && (cont == 7)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a8;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[7]) && (cont == 7)){    
+      Cofre.acende_led(LED_B);    
+      currentState = a8;    
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis();   
     }
     else{
       if(chave_ativada == senha_m[7]){      
@@ -749,7 +724,6 @@ void loop()
         currentState = m8;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -771,17 +745,15 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[8] != senha_m[8]){
-      if(cont == 0) cont = 8;
-      if((senha[8] == 255)&& igual) currentState = a8;
-      igual = false;
+      if(cont == -1) cont = 8;
+      if(senha[8] == 255) currentState = a8;
     }
 
-    if((chave_ativada == senha[8]) && (igual == false) && (cont == 8)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = a9;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[8]) && (cont == 8)){     
+      Cofre.acende_led(LED_B);      
+      currentState = a9;     
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis(); 
     }
     else{
       if(chave_ativada == senha_m[8]){      
@@ -789,7 +761,6 @@ void loop()
         currentState = m9;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -811,17 +782,16 @@ void loop()
     chave_ativada = Cofre.leia_chave();
 
     if(senha[9] != senha_m[9]){
-      if(cont == 0) cont = 9;
-      if((senha[9] == 255)&& igual) currentState = a9;
+      if(cont == -1) cont = 9;
+      if(senha[9] == 255) currentState = a9;
       igual = false;
     }
 
-    if((chave_ativada == senha[9]) && (igual == false) && (cont == 9)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = aX;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[9]) && (cont == 9)){    
+      Cofre.acende_led(LED_B); 
+      currentState = aX;      
       delay(trans);
-      ti = millis();      //Inicia-se um contador de tempo, a fim de testar se (millis() - ti) vai superar 'temp' no proximo estado
-      break;
+      ti = millis();     
     }
     else{
       if(chave_ativada == senha_m[9]){      
@@ -829,7 +799,6 @@ void loop()
         currentState = mX;
         delay(trans);
         ti = millis();
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -848,11 +817,11 @@ void loop()
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//  case f2:  
   case f2:  
     Cofre.acende_led(LED_G);
-    if (millis()-ti > temp){     
+    if (millis()-ti > temp){   
       currentState = fechado_destrancado;
       break;
     }
-    if (senha[2] == 255){          
+    if (senha[2] == 255){       
       currentState = estado_inicial;
       servo.write(sinal_fecha);  
       break;
@@ -865,7 +834,6 @@ void loop()
       currentState = f3;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -895,7 +863,6 @@ void loop()
       currentState = f4;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -925,7 +892,6 @@ void loop()
       currentState = f5;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -955,7 +921,6 @@ void loop()
       currentState = f6;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -985,7 +950,6 @@ void loop()
       currentState = f7;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -1015,7 +979,6 @@ void loop()
       currentState = f8;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -1045,7 +1008,6 @@ void loop()
       currentState = f9;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -1075,7 +1037,6 @@ void loop()
       currentState = fX;
       delay(trans);
       ti = millis();
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -1099,7 +1060,9 @@ void loop()
       senha[2] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(2, chave_ativada);
@@ -1118,7 +1081,9 @@ void loop()
       senha[3] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(3, chave_ativada);
@@ -1137,7 +1102,9 @@ void loop()
       senha[4] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(4, chave_ativada);
@@ -1156,7 +1123,9 @@ void loop()
       senha[5] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(5, chave_ativada);
@@ -1175,7 +1144,9 @@ void loop()
       senha[6] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(6, chave_ativada);
@@ -1194,7 +1165,9 @@ void loop()
       senha[7] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(7, chave_ativada);
@@ -1213,7 +1186,9 @@ void loop()
       senha[8] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(8, chave_ativada);
@@ -1232,7 +1207,9 @@ void loop()
       senha[9] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+    
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(9, chave_ativada);
@@ -1244,30 +1221,29 @@ void loop()
     break;
     
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    ULTIMOS ESTADOS    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@//
-                                                     //Estados finais dos processos iniciados por (a1, f1, t1 e m1) e continuados por (aK, fK, tK e mK)
+                                                   //Estados finais dos processos iniciados por (a1, f1, t1 e m1) e continuados por (aK, fK, tK e mK)
 
   case aX:  
     Cofre.acende_led(LED_R);
-    if (millis()-ti > temp){     //Verifica se o tempo de execucao do estado e maior que 'temp'
-      currentState = estado_inicial;    //Em caso positivo, redirecionamento para estado_inicial
+    if (millis()-ti > temp){   
+      currentState = estado_inicial;   
       break;
     }
-    if (senha[10] == 255){         //Verifica se a senha chegou ao fim (caso em que a senha possui menos digitos que o maximo permitido)
-      currentState = fechado_destrancado;       //Redirecionamento para o estado em que o cofre esta destrancado e com a porta fechada
-      servo.write(sinal_abre);        //O servo vai para a posicao em que destranca a porta
+    if (senha[10] == 255){      
+      currentState = fechado_destrancado;      
+      servo.write(sinal_abre);    
       break;
     } 
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[10]){      //Continuacao do processo de abertura do cofre
+    if(chave_ativada == senha[10]){     
       Cofre.acende_led(LED_B);
-      currentState = fechado_destrancado;
+      currentState = fechado_destrancado;		//Abertura do cofre
       delay(trans);
       servo.write(sinal_abre);
-      break;
     }
-    else{         //Redirecionamento para o estado 'senha_errada'
+    else{       
       if (chave_ativada > 0){
         Cofre.acende_led(LED_B);
         delay(trans);
@@ -1290,12 +1266,11 @@ void loop()
 
     chave_ativada = Cofre.leia_chave();
 
-    if(chave_ativada == senha[10]){ 
+    if(chave_ativada == senha[10]){ 		//Fechamento do cofre
       Cofre.acende_led(LED_B);
       currentState = estado_inicial;
       delay(trans);
       servo.write(sinal_fecha); 
-      break;
     }
     else{   
       if (chave_ativada > 0){
@@ -1315,25 +1290,22 @@ void loop()
 
     chave_ativada = Cofre.leia_chave();
     if(senha[10] != senha_m[10]){
-      if(cont == 0) cont = 10;
-      if((senha[10] == 255)&& igual) currentState = aX;
-      igual = false;
+      if(cont == -1) cont = 10;
+      if(senha[10] == 255) currentState = aX;
     }
 
-    if((chave_ativada == senha[10]) && (igual == false) && (cont == 10)){     //Recebeu a senha do usuario
-      Cofre.acende_led(LED_B);        //Acender o LED azul sempre significa que um caractere foi inserido
-      currentState = fechado_destrancado;        //Direcionamento para o proximo estado de senha do usuario
+    if((chave_ativada == senha[10]) && (cont == 10)){     
+      Cofre.acende_led(LED_B);     
+      currentState = fechado_destrancado;      //Abertura do cofre (caso senha usuario == senha mestra)
       delay(trans);
       servo.write(sinal_abre);     
-      break;
     }
     else{
-      if(chave_ativada == senha_m[10]){      
+      if(chave_ativada == senha_m[10]){      	//Abertura do cofre
         Cofre.acende_led(LED_B);
         currentState = fechado_destrancado;
         delay(trans);
         servo.write(sinal_abre);
-        break;
       }
       else{        
         if (chave_ativada > 0){
@@ -1353,7 +1325,9 @@ void loop()
       senha[10] = 255;
       break;
     }
+
     chave_ativada = Cofre.leia_chave();
+
     if (chave_ativada > 0){
       Cofre.acende_led(LED_B);
       EEPROM.write(10, chave_ativada);
@@ -1364,4 +1338,4 @@ void loop()
     break;
   }  //Switch
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@// 
-}
+}  //loop()
