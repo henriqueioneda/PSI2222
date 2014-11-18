@@ -1,5 +1,3 @@
-blalblabalbalbal
-
 #ifndef Cofre_h
 #define Cofre_h
 
